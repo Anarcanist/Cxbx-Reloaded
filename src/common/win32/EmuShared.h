@@ -169,7 +169,13 @@ class EmuShared : public Mutex
 		// ******************************************************************
 		void GetDebuggingFlag(bool *value) { Lock(); *value = m_bDebugging; Unlock(); }
 		void SetDebuggingFlag(const bool *value) { Lock(); m_bDebugging = *value; Unlock(); }
-
+#ifndef CXBX_LOADER
+		// ******************************************************************
+		// * Previous Memory Layout value Accessors
+		// ******************************************************************
+		void GetMmLayout(int* value) { Lock(); *value = m_PreviousMmLayout; Unlock(); }
+		void SetMmLayout(int* value) { Lock(); m_PreviousMmLayout = *value; Unlock(); }
+#endif
 		// ******************************************************************
 		// * Log Level value Accessors
 		// ******************************************************************
@@ -182,8 +188,7 @@ class EmuShared : public Mutex
 		void GetLogModules(unsigned int *value)
 		{
 			Lock();
-			for (int i = 0; i < NUM_INTEGERS_LOG; ++i)
-			{
+			for (int i = 0; i < NUM_INTEGERS_LOG; ++i) {
 				value[i] = m_core.LoggedModules[i];
 			}
 			Unlock();
@@ -191,8 +196,7 @@ class EmuShared : public Mutex
 		void SetLogModules(unsigned int *value)
 		{
 			Lock();
-			for (int i = 0; i < NUM_INTEGERS_LOG; ++i)
-			{
+			for (int i = 0; i < NUM_INTEGERS_LOG; ++i) {
 				m_core.LoggedModules[i] = value[i];
 			}
 			Unlock();
@@ -245,7 +249,12 @@ class EmuShared : public Mutex
 		bool         m_bDebugging;
 		bool         m_bReady_status;
 		bool         m_bEmulating_status;
+#ifndef CXBX_LOADER
+		int          m_PreviousMmLayout;
+		int          m_Reserved7[3];
+#else
 		int          m_Reserved7[4];
+#endif
 		bool         m_bFirstLaunch;
 		bool         m_bReserved2;
 		bool         m_bReserved3;

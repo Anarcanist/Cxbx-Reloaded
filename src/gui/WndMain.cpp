@@ -66,6 +66,33 @@
 static int gameLogoWidth, gameLogoHeight;
 static int splashLogoWidth, splashLogoHeight;
 
+static HANDLE hPersistedMemory = NULL;
+static LPVOID PersistedMemoryAddr = nullptr;
+
+void MapPersistedMemory()
+{
+	assert(((hPersistedMemory == NULL) == (PersistedMemoryAddr == nullptr)) && "Persistent memory handle and address must both be unset (or already set)!");
+
+	if (hPersistedMemory == NULL) {
+		hPersistedMemory = OpenFileMapping(FILE_MAP_READ, FALSE, "PersistentMemory");
+		assert(hPersistedMemory != NULL);
+
+		PersistedMemoryAddr = MapViewOfFile(hPersistedMemory, FILE_MAP_READ, 0, 0, 0);
+		assert(PersistedMemoryAddr != nullptr);
+	}
+}
+
+void UnmapPersistedMemory()
+{
+	if (hPersistedMemory != NULL) {
+		UnmapViewOfFile(PersistedMemoryAddr);
+		PersistedMemoryAddr = nullptr;
+
+		CloseHandle(hPersistedMemory);
+		hPersistedMemory = NULL;
+	}
+}
+
 bool g_SaveOnExit = true;
 
 void ClearSymbolCache(const char sStorageLocation[MAX_PATH])
@@ -347,8 +374,17 @@ LRESULT CALLBACK WndMain::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
 
 							g_EmuShared->SetIsEmulating(true); // NOTE: Putting in here raise to low or medium risk due to debugger will launch itself. (Current workaround)
 							g_EmuShared->SetIsReady(true);
-							break;
 						}
+						break;
+
+						case ID_GUI_VM_PERSIST_MEM: {
+							if (lParam) {
+								MapPersistedMemory();
+							} else {
+								UnmapPersistedMemory();
+							}
+						}
+						break;
 					}
 				}
 				break;
@@ -2217,12 +2253,18 @@ void WndMain::StartEmulation(HWND hwndParent, DebuggerState LocalDebuggerState /
 
 		char szExeFileName[MAX_PATH];
 		GetModuleFileName(GetModuleHandle(NULL), szExeFileName, MAX_PATH);
+#ifdef CXBX_LOADER
+		PathRemoveFileSpec(szExeFileName);
+		PathAppend(szExeFileName, "\\cxbxr-ldr.exe");
+#endif
 
 		bool AttachLocalDebugger = (LocalDebuggerState == debuggerOn);
 		g_EmuShared->SetDebuggingFlag(&AttachLocalDebugger);
 
         std::string szProcArgsBuffer;
         XTL::CxbxConvertArgToString(szProcArgsBuffer, szExeFileName, m_XbeFilename, hwndParent, g_Settings->m_core.KrnlDebugMode, g_Settings->m_core.szKrnlDebug);
+
+        UnmapPersistedMemory();
 
         if (AttachLocalDebugger) {
 
